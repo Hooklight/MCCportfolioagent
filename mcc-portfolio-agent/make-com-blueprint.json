@@ -1,0 +1,326 @@
+{
+  "name": "MCC Portfolio Updates - Tally to Database",
+  "flow": [
+    {
+      "id": 1,
+      "module": "tally:watch-responses",
+      "name": "Watch Tally Form Responses",
+      "mapper": {
+        "formId": "mRy1pl",
+        "formId_financials": "wdeeRr"
+      },
+      "parameters": {
+        "webhookUrl": "{{MAKE_WEBHOOK_URL}}",
+        "interval": 15
+      }
+    },
+    {
+      "id": 2,
+      "module": "tools:switch",
+      "name": "Route by Form Type",
+      "mapper": {
+        "input": "{{1.formId}}"
+      },
+      "routes": [
+        {
+          "label": "Company Update Form",
+          "filter": {
+            "name": "Company Update",
+            "conditions": [[
+              {
+                "a": "{{1.formId}}",
+                "o": "text:equal",
+                "b": "mRy1pl"
+              }
+            ]]
+          }
+        },
+        {
+          "label": "Financials Form",
+          "filter": {
+            "name": "Financials",
+            "conditions": [[
+              {
+                "a": "{{1.formId}}",
+                "o": "text:equal",
+                "b": "wdeeRr"
+              }
+            ]]
+          }
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "module": "tools:compose",
+      "name": "Transform Update Data",
+      "route": 1,
+      "mapper": {
+        "company_name": "{{1.data.company_name}}",
+        "report_period": "{{1.data.report_period}}",
+        "period_type": "{{1.data.period_type}}",
+        "metrics": {
+          "ARR": "{{1.data.arr}}",
+          "revenue": "{{1.data.revenue}}",
+          "gross_margin": "{{1.data.gross_margin}}",
+          "burn_rate": "{{1.data.burn_rate}}",
+          "cash_balance": "{{1.data.cash_balance}}",
+          "runway_months": "{{1.data.runway_months}}",
+          "headcount": "{{1.data.headcount}}",
+          "customer_count": "{{1.data.customer_count}}",
+          "churn_rate": "{{1.data.churn_rate}}",
+          "CAC": "{{1.data.cac}}",
+          "LTV": "{{1.data.ltv}}"
+        },
+        "highlights": "{{1.data.highlights}}",
+        "challenges": "{{1.data.challenges}}",
+        "asks": "{{1.data.asks}}",
+        "submitted_by": "{{1.data.submitter_email}}",
+        "submitted_at": "{{1.createdAt}}"
+      }
+    },
+    {
+      "id": 4,
+      "module": "tools:compose",
+      "name": "Transform Financial Data",
+      "route": 2,
+      "mapper": {
+        "company_name": "{{1.data.company_name}}",
+        "period_ending": "{{1.data.period_ending}}",
+        "financial_statements": {
+          "revenue": "{{1.data.revenue}}",
+          "cogs": "{{1.data.cogs}}",
+          "gross_profit": "{{1.data.gross_profit}}",
+          "operating_expenses": "{{1.data.operating_expenses}}",
+          "ebitda": "{{1.data.ebitda}}",
+          "net_income": "{{1.data.net_income}}",
+          "cash": "{{1.data.cash}}",
+          "ar": "{{1.data.accounts_receivable}}",
+          "inventory": "{{1.data.inventory}}",
+          "total_assets": "{{1.data.total_assets}}",
+          "total_liabilities": "{{1.data.total_liabilities}}",
+          "equity": "{{1.data.equity}}"
+        },
+        "submitted_by": "{{1.data.submitter_email}}",
+        "submitted_at": "{{1.createdAt}}"
+      }
+    },
+    {
+      "id": 5,
+      "module": "google-sheets:addRow",
+      "name": "Append to Master Sheet",
+      "mapper": {
+        "spreadsheetId": "1ZUlnPeNTOYmYKj93ozmY0pJZeLGfFrdKwW-OYKNjkyc",
+        "sheetName": "{{if(2.route = 1; 'Updates'; 'Financials')}}",
+        "values": {
+          "A": "{{now}}",
+          "B": "{{3.company_name}}{{4.company_name}}",
+          "C": "{{3.report_period}}{{4.period_ending}}",
+          "D": "{{toJSON(3.metrics)}}{{toJSON(4.financial_statements)}}",
+          "E": "{{3.highlights}} {{3.challenges}}",
+          "F": "{{3.submitted_by}}{{4.submitted_by}}",
+          "G": "Pending",
+          "H": "{{1.responseId}}"
+        }
+      }
+    },
+    {
+      "id": 6,
+      "module": "tools:text-parser",
+      "name": "Normalize Company Name",
+      "mapper": {
+        "text": "{{5.B}}",
+        "pattern": "[^a-z0-9-]",
+        "flags": "gi",
+        "replace": "-",
+        "operation": "replace"
+      }
+    },
+    {
+      "id": 7,
+      "module": "http:request",
+      "name": "Call Ingestion API",
+      "mapper": {
+        "url": "{{INGESTION_API_URL}}/ingest/update",
+        "method": "POST",
+        "headers": {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer {{API_KEY}}"
+        },
+        "body": {
+          "company_id": "{{toLower(6.text)}}",
+          "source_ptr": {
+            "source_type": "tally_form",
+            "source_id": "{{1.responseId}}",
+            "storage_url": "tally://{{1.formId}}/{{1.responseId}}"
+          },
+          "facts": {
+            "updates": [
+              {
+                "period_start": "{{formatDate(addDays(parseDate(3.report_period + '-01'); -30); 'YYYY-MM-DD')}}",
+                "period_end": "{{formatDate(parseDate(3.report_period + '-01'); 'YYYY-MM-DD')}}",
+                "report_period": "{{3.report_period}}{{4.period_ending}}",
+                "metrics": "{{3.metrics}}{{4.financial_statements}}",
+                "qualitative_summary": "{{3.highlights}} Challenges: {{3.challenges}} Asks: {{3.asks}}",
+                "confidence": 0.9
+              }
+            ],
+            "documents": [
+              {
+                "doc_id": "tally-{{1.responseId}}",
+                "storage_url": "sheets://{{5.spreadsheetId}}/{{5.sheetName}}/{{5.rowNumber}}",
+                "title": "{{3.company_name}}{{4.company_name}} - {{3.report_period}}{{4.period_ending}} Update",
+                "doc_type": "form_response"
+              }
+            ]
+          },
+          "confidence_overall": 0.9,
+          "assumptions": ["Form data is self-reported", "Currency assumed USD"]
+        }
+      },
+      "error_handler": {
+        "type": "retry",
+        "attempts": 3,
+        "interval": 60
+      }
+    },
+    {
+      "id": 8,
+      "module": "google-sheets:updateRow",
+      "name": "Update Status in Sheet",
+      "mapper": {
+        "spreadsheetId": "1ZUlnPeNTOYmYKj93ozmY0pJZeLGfFrdKwW-OYKNjkyc",
+        "sheetName": "{{if(2.route = 1; 'Updates'; 'Financials')}}",
+        "rowNumber": "{{5.rowNumber}}",
+        "values": {
+          "G": "{{if(7.statusCode = 200; 'Processed'; 'Failed')}}",
+          "I": "{{7.body.message}}"
+        }
+      }
+    },
+    {
+      "id": 9,
+      "module": "microsoft365-email:send",
+      "name": "Send Confirmation Email",
+      "mapper": {
+        "to": "{{3.submitted_by}}{{4.submitted_by}}",
+        "cc": "Finance@markcubancompanies.com",
+        "subject": "[MCC Portfolio] Update Received - {{3.company_name}}{{4.company_name}}",
+        "body": "Thank you for submitting your {{if(2.route = 1; 'company update'; 'financial statements')}} for {{3.report_period}}{{4.period_ending}}.\n\nYour submission has been processed and added to our portfolio database.\n\nKey metrics received:\n{{toJSON(3.metrics)}}{{toJSON(4.financial_statements)}}\n\nIf you need to make corrections, please reply to this email.\n\nBest regards,\nMCC Portfolio Team",
+        "importance": "normal"
+      },
+      "filter": {
+        "name": "Only if successful",
+        "conditions": [[
+          {
+            "a": "{{7.statusCode}}",
+            "o": "numeric:equal",
+            "b": 200
+          }
+        ]]
+      }
+    },
+    {
+      "id": 10,
+      "module": "slack:send-message",
+      "name": "Notify Team on Slack",
+      "mapper": {
+        "channel": "#portfolio-updates",
+        "text": "📊 New {{if(2.route = 1; 'company update'; 'financials')}} received",
+        "blocks": [
+          {
+            "type": "section",
+            "text": {
+              "type": "mrkdwn",
+              "text": "*Company:* {{3.company_name}}{{4.company_name}}\n*Period:* {{3.report_period}}{{4.period_ending}}\n*Submitted by:* {{3.submitted_by}}{{4.submitted_by}}"
+            }
+          },
+          {
+            "type": "section",
+            "text": {
+              "type": "mrkdwn",
+              "text": "{{if(3.metrics.ARR; '*ARR:* $' + 3.metrics.ARR + '\n'; '')}}{{if(3.metrics.runway_months; '*Runway:* ' + 3.metrics.runway_months + ' months\n'; '')}}{{if(3.highlights; '*Highlights:* ' + substring(3.highlights; 0; 200) + '...'; '')}}"
+            }
+          },
+          {
+            "type": "actions",
+            "elements": [
+              {
+                "type": "button",
+                "text": {
+                  "type": "plain_text",
+                  "text": "View in Sheet"
+                },
+                "url": "https://docs.google.com/spreadsheets/d/1ZUlnPeNTOYmYKj93ozmY0pJZeLGfFrdKwW-OYKNjkyc"
+              }
+            ]
+          }
+        ]
+      },
+      "filter": {
+        "name": "Only for updates with ARR > $1M",
+        "conditions": [[
+          {
+            "a": "{{parseNumber(replace(3.metrics.ARR; ','; ''))}}",
+            "o": "numeric:greater",
+            "b": 1000000
+          }
+        ]]
+      }
+    },
+    {
+      "id": 11,
+      "module": "datastore:record",
+      "name": "Log Processing",
+      "mapper": {
+        "datastore": "mcc_processing_log",
+        "record": {
+          "timestamp": "{{now}}",
+          "form_id": "{{1.formId}}",
+          "response_id": "{{1.responseId}}",
+          "company": "{{3.company_name}}{{4.company_name}}",
+          "status": "{{if(7.statusCode = 200; 'success'; 'failed')}}",
+          "api_response": "{{7.body}}",
+          "sheet_row": "{{5.rowNumber}}"
+        }
+      }
+    }
+  ],
+  "settings": {
+    "executionTimeout": 40,
+    "maxErrors": 3,
+    "sequential": false,
+    "scheduling": {
+      "type": "interval",
+      "interval": 900
+    },
+    "errorHandling": {
+      "type": "continue",
+      "notify": "admin@markcubancompanies.com"
+    }
+  },
+  "connections": {
+    "tally": {
+      "name": "MCC Tally Forms",
+      "type": "oauth2"
+    },
+    "google-sheets": {
+      "name": "MCC Portfolio Sheets",
+      "type": "oauth2",
+      "scope": "https://www.googleapis.com/auth/spreadsheets"
+    },
+    "microsoft365-email": {
+      "name": "MCC Finance Email",
+      "type": "oauth2"
+    },
+    "slack": {
+      "name": "MCC Slack Workspace",
+      "type": "oauth2"
+    }
+  },
+  "variables": {
+    "INGESTION_API_URL": "https://mcc-portfolio-api.azurewebsites.net",
+    "API_KEY": "{{getFromDataStore('api_key')}}",
+    "MAKE_WEBHOOK_URL": "https://hook.us1.make.com/{{webhookId}}"
+  }
+}

@@ -1,0 +1,605 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MCC Portfolio Data Extraction Schemas",
+  "definitions": {
+    "ExtractionEnvelope": {
+      "type": "object",
+      "required": ["company_id", "source_ptr", "facts", "confidence_overall"],
+      "properties": {
+        "company_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "description": "Lowercase kebab-case company identifier"
+        },
+        "source_ptr": {
+          "$ref": "#/definitions/SourcePointer"
+        },
+        "facts": {
+          "$ref": "#/definitions/Facts"
+        },
+        "confidence_overall": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Overall confidence score (0-1)"
+        },
+        "spans": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/TextSpan"
+          }
+        },
+        "anomalies": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "assumptions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "SourcePointer": {
+      "type": "object",
+      "required": ["source_type", "source_id"],
+      "properties": {
+        "source_type": {
+          "type": "string",
+          "enum": ["email", "pdf", "docx", "notebook_lm", "tally_form", "csv_import", "manual_entry"],
+          "description": "Type of source document"
+        },
+        "source_id": {
+          "type": "string",
+          "description": "Unique identifier for the source"
+        },
+        "storage_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL or path to the source document"
+        }
+      }
+    },
+    "Facts": {
+      "type": "object",
+      "properties": {
+        "company": {
+          "$ref": "#/definitions/Company"
+        },
+        "rounds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Round"
+          }
+        },
+        "ownerships": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Ownership"
+          }
+        },
+        "cashflows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Cashflow"
+          }
+        },
+        "updates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Update"
+          }
+        },
+        "contacts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Contact"
+          }
+        },
+        "documents": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Document"
+          }
+        },
+        "comms": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Communication"
+          }
+        }
+      }
+    },
+    "Company": {
+      "type": "object",
+      "properties": {
+        "legal_name": {
+          "type": "string",
+          "maxLength": 255
+        },
+        "aka": {
+          "type": "string",
+          "maxLength": 255
+        },
+        "website": {
+          "type": "string",
+          "format": "uri",
+          "maxLength": 500
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "inactive", "exited", "written_off"]
+        },
+        "earliest_close_date": {
+          "type": "string",
+          "format": "date"
+        },
+        "hq_city": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "hq_state": {
+          "type": "string",
+          "maxLength": 50
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "Round": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["Seed", "A", "B", "Bridge", "Note", "SAFE", "Secondary", "Other"]
+        },
+        "close_date": {
+          "type": "string",
+          "format": "date"
+        },
+        "pre_money": {
+          "$ref": "#/definitions/Money"
+        },
+        "post_money": {
+          "$ref": "#/definitions/Money"
+        },
+        "amount_invested_by_mcc": {
+          "$ref": "#/definitions/Money"
+        },
+        "instrument": {
+          "type": "string",
+          "enum": ["Equity", "SAFE", "Convertible Note", "Royalty", "Other"]
+        },
+        "lead_investor": {
+          "type": "string",
+          "maxLength": 255
+        },
+        "source_doc_id": {
+          "type": "string",
+          "maxLength": 255
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "Ownership": {
+      "type": "object",
+      "required": ["as_of_date"],
+      "properties": {
+        "as_of_date": {
+          "type": "string",
+          "format": "date"
+        },
+        "security_class": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "shares_or_units": {
+          "type": "string",
+          "pattern": "^[0-9]+(\\.[0-9]+)?$"
+        },
+        "fully_diluted_pct": {
+          "type": "string",
+          "pattern": "^[0-9]+(\\.[0-9]+)?$",
+          "description": "Percentage as number (0-100)"
+        },
+        "notes": {
+          "type": "string"
+        },
+        "source_doc_id": {
+          "type": "string",
+          "maxLength": 255
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "Cashflow": {
+      "type": "object",
+      "required": ["date", "kind", "amount"],
+      "properties": {
+        "date": {
+          "type": "string",
+          "format": "date"
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["Investment", "Distribution", "Dividend", "Royalty", "Expense_Reimburse", "Other"]
+        },
+        "instrument": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "amount": {
+          "$ref": "#/definitions/Money"
+        },
+        "wire_ref": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "notes": {
+          "type": "string"
+        },
+        "source_doc_id": {
+          "type": "string",
+          "maxLength": 255
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "Update": {
+      "type": "object",
+      "properties": {
+        "period_start": {
+          "type": "string",
+          "format": "date"
+        },
+        "period_end": {
+          "type": "string",
+          "format": "date"
+        },
+        "report_period": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-(Q[1-4]|[0-9]{2})$",
+          "description": "Format: YYYY-Q# or YYYY-MM"
+        },
+        "metrics": {
+          "$ref": "#/definitions/Metrics"
+        },
+        "qualitative_summary": {
+          "type": "string"
+        },
+        "update_deck_doc_id": {
+          "type": "string",
+          "maxLength": 255
+        },
+        "email_msg_id": {
+          "type": "string",
+          "maxLength": 255
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "Metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ARR": {
+          "$ref": "#/definitions/Money"
+        },
+        "MRR": {
+          "$ref": "#/definitions/Money"
+        },
+        "revenue": {
+          "$ref": "#/definitions/Money"
+        },
+        "gross_margin": {
+          "type": "string",
+          "pattern": "^[0-9]+(\\.[0-9]+)?$"
+        },
+        "gross_margin_pct": {
+          "type": "string",
+          "pattern": "^[0-9]+(\\.[0-9]+)?$"
+        },
+        "burn_rate": {
+          "$ref": "#/definitions/Money"
+        },
+        "cash": {
+          "$ref": "#/definitions/Money"
+        },
+        "cash_balance": {
+          "$ref": "#/definitions/Money"
+        },
+        "runway_months": {
+          "type": "string",
+          "pattern": "^[0-9]+(\\.[0-9]+)?$"
+        },
+        "headcount": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        },
+        "customer_count": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        },
+        "churn": {
+          "type": "string",
+          "pattern": "^[0-9]+(\\.[0-9]+)?$"
+        },
+        "churn_rate": {
+          "type": "string",
+          "pattern": "^[0-9]+(\\.[0-9]+)?$"
+        },
+        "CAC": {
+          "$ref": "#/definitions/Money"
+        },
+        "LTV": {
+          "$ref": "#/definitions/Money"
+        },
+        "LTV_CAC_ratio": {
+          "type": "string",
+          "pattern": "^[0-9]+(\\.[0-9]+)?$"
+        },
+        "EBITDA": {
+          "$ref": "#/definitions/Money"
+        },
+        "net_income": {
+          "$ref": "#/definitions/Money"
+        }
+      }
+    },
+    "Contact": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 255
+        },
+        "role": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 255
+        },
+        "phone": {
+          "type": "string",
+          "maxLength": 50
+        },
+        "is_primary": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "Document": {
+      "type": "object",
+      "required": ["doc_id", "storage_url"],
+      "properties": {
+        "doc_id": {
+          "type": "string",
+          "maxLength": 255
+        },
+        "storage_url": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "doc_type": {
+          "type": "string",
+          "maxLength": 50
+        },
+        "checksum": {
+          "type": "string",
+          "maxLength": 64
+        }
+      }
+    },
+    "Communication": {
+      "type": "object",
+      "required": ["source", "occurred_at"],
+      "properties": {
+        "source": {
+          "type": "string",
+          "enum": ["email", "notebook_lm", "sms", "call"]
+        },
+        "occurred_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "participants": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "summary": {
+          "type": "string"
+        },
+        "extracted_fields": {
+          "type": "object"
+        },
+        "raw_ptr": {
+          "type": "string"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "TextSpan": {
+      "type": "object",
+      "required": ["field_path", "text", "char_start", "char_end"],
+      "properties": {
+        "field_path": {
+          "type": "string",
+          "description": "JSON path to the extracted field"
+        },
+        "text": {
+          "type": "string",
+          "description": "Original text that was extracted"
+        },
+        "char_start": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "char_end": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "Money": {
+      "type": "string",
+      "pattern": "^-?[0-9]+(\\.[0-9]{1,2})?$",
+      "description": "Decimal value with up to 2 decimal places"
+    }
+  },
+  "validation_rules": {
+    "date_validation": {
+      "description": "All dates must be ISO 8601 format (YYYY-MM-DD)",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "currency_validation": {
+      "description": "Currency values must be decimals with max 2 decimal places",
+      "pattern": "^-?[0-9]+(\\.[0-9]{1,2})?$"
+    },
+    "percentage_validation": {
+      "description": "Percentages must be 0-100",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "company_id_validation": {
+      "description": "Company IDs must be lowercase kebab-case",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "email_validation": {
+      "description": "Email addresses must be valid format",
+      "format": "email"
+    },
+    "duplicate_prevention": {
+      "cashflows": {
+        "unique_keys": ["company_id", "date", "amount", "wire_ref"],
+        "description": "Prevent duplicate cashflow entries"
+      },
+      "ownership": {
+        "unique_keys": ["company_id", "as_of_date", "security_class"],
+        "description": "One ownership record per company/date/class"
+      }
+    },
+    "business_rules": {
+      "post_money_validation": {
+        "rule": "post_money >= pre_money + amount_invested_by_mcc",
+        "description": "Post-money valuation should include the investment"
+      },
+      "ownership_sum": {
+        "rule": "SUM(ownership_pct) per company <= 100",
+        "description": "Total ownership cannot exceed 100%"
+      },
+      "date_consistency": {
+        "rule": "period_end >= period_start",
+        "description": "End date must be after start date"
+      },
+      "investment_date": {
+        "rule": "investment_date <= TODAY()",
+        "description": "Cannot have future investment dates"
+      }
+    }
+  },
+  "examples": {
+    "email_extraction": {
+      "company_id": "brightwheel",
+      "source_ptr": {
+        "source_type": "email",
+        "source_id": "AAMkAGI2TG93AAA=",
+        "storage_url": "graph://messages/AAMkAGI2TG93AAA="
+      },
+      "facts": {
+        "updates": [
+          {
+            "period_start": "2025-01-01",
+            "period_end": "2025-01-31",
+            "report_period": "2025-01",
+            "metrics": {
+              "ARR": "12000000",
+              "runway_months": "18",
+              "headcount": "45"
+            },
+            "qualitative_summary": "Strong month with 15% MoM growth...",
+            "confidence": 0.85
+          }
+        ],
+        "cashflows": [
+          {
+            "date": "2025-01-15",
+            "kind": "Investment",
+            "amount": "500000",
+            "confidence": 0.9
+          }
+        ]
+      },
+      "confidence_overall": 0.87,
+      "spans": [
+        {
+          "field_path": "facts.updates[0].metrics.ARR",
+          "text": "$12M ARR",
+          "char_start": 234,
+          "char_end": 242
+        }
+      ],
+      "assumptions": ["currency defaulted to USD"]
+    },
+    "tally_form_extraction": {
+      "company_id": "dude-wipes",
+      "source_ptr": {
+        "source_type": "tally_form",
+        "source_id": "resp_3nK9vX2m",
+        "storage_url": "tally://mRy1pl/resp_3nK9vX2m"
+      },
+      "facts": {
+        "updates": [
+          {
+            "period_start": "2025-01-01",
+            "period_end": "2025-03-31",
+            "report_period": "2025-Q1",
+            "metrics": {
+              "revenue": "8500000",
+              "gross_margin": "42",
+              "customer_count": "15000"
+            },
+            "qualitative_summary": "Expanded to 500 new retail locations...",
+            "confidence": 0.95
+          }
+        ]
+      },
+      "confidence_overall": 0.95,
+      "assumptions": ["Form data is self-reported"]
+    }
+  }
+}
