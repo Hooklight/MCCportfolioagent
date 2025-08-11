@@ -1,0 +1,45 @@
+Azure Functions v4 Python 3.11 Dependencies
+Purpose: Define all dependencies for MCC Portfolio Intelligence email ingestion service
+To generate hashes: pip-compile --generate-hashes requirements.txt
+Core Azure Functions runtime and identity management
+azure-functions==1.18.0  # Azure Functions Python worker runtime
+azure-identity==1.15.0   # Azure AD authentication for managed identities
+msal==1.26.0            # Microsoft Authentication Library for Graph API auth
+HTTP and API interactions
+requests==2.31.0        # HTTP library for external API calls
+Data validation and serialization
+pydantic==2.5.3         # Data validation using Python type annotations
+jsonschema==4.21.1      # JSON Schema validation for extraction schemas
+fastjsonschema==2.19.1  # Fast JSON Schema validation for high-throughput
+Database connectivity
+psycopg[binary]==3.1.17 # PostgreSQL adapter with binary speedups for Azure
+Configuration and environment
+python-dotenv==1.0.0    # Load environment variables from .env files
+Resilience and reliability
+tenacity==8.2.3         # Retry logic with exponential backoff
+Logging and observability
+structlog==24.1.0       # Structured JSON logging with trace correlation
+Security
+cryptography==42.0.2    # HMAC verification and cryptographic operations
+Transitive dependencies (pin for reproducibility)
+certifi==2024.2.2
+charset-normalizer==3.3.2
+idna==3.6
+urllib3==2.2.0
+typing-extensions==4.9.0
+attrs==23.2.0
+rpds-py==0.17.1
+referencing==0.32.1
+jsonschema-specifications==2023.12.1
+pydantic-core==2.14.6
+annotated-types==0.6.0
+Development dependencies (comment out for production)
+pytest==8.0.0
+pytest-asyncio==0.23.5
+pytest-mock==3.12.0
+black==24.1.1
+ruff==0.2.0
+Note: To generate a requirements.lock with hashes:
+1. pip install pip-tools
+2. pip-compile --generate-hashes -o requirements.lock requirements.txt
+3. Use pip install --require-hashes -r requirements.lock in production
