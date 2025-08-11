@@ -1,0 +1,24 @@
+{
+"value": [
+{
+"subscriptionId": "76222963-cc7b-42d2-882d-8aaa69cb2ba3",
+"changeType": "created",
+"clientState": "your-hmac-secret-for-webhook-validation",
+"resource": "me/mailFolders/inbox/messages/AAMkADk0NA==",
+"resourceData": {
+"@odata.type": "#Microsoft.Graph.Message",
+"@odata.id": "me/messages/AAMkADk0NA==",
+"id": "AAMkADk0NA==",
+"subject": "Portfolio Update - Company: BEATBOX - Date: 2024-03-15",
+"from": {
+"emailAddress": {
+"name": "Portfolio Manager",
+"address": "portfolio@example.com"
+}
+},
+"receivedDateTime": "2024-03-15T10:30:00Z",
+"bodyPreview": "Q1 2024 Portfolio Update for BEATBOX..."
+}
+}
+]
+}
