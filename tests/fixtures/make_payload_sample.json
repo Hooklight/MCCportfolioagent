@@ -1,0 +1,32 @@
+{
+"company_id": "BEATBOX",
+"email_id": "AAMkADk0NA==",
+"received_at": "2024-03-15T10:30:00Z",
+"source_ptr": "msgraph://AAMkADk0NA==",
+"facts": [
+{
+"field": "revenue",
+"value": "12500000",
+"period": "Q1-2024",
+"confidence": 0.95
+},
+{
+"field": "headcount",
+"value": "87",
+"period": "Q1-2024",
+"confidence": 0.90
+},
+{
+"field": "gross_margin",
+"value": "0.42",
+"period": "Q1-2024",
+"confidence": 0.85
+}
+],
+"confidence_overall": 0.90,
+"extraction_method": "structured_email",
+"metadata": {
+"processor_version": "1.0.0",
+"processed_at": "2024-03-15T10:31:00Z"
+}
+}
